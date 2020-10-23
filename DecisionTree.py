@@ -48,6 +48,7 @@ def information_gain(T,c,A,verbose=False):
 if __name__=='__main__':
     # import and preprocess train_set
     train_set = pd.read_csv('res/titanic/train.csv')
+    test_set = pd.read_csv('res/titanic/test.csv')
 
     categories = ['Survived', 'Pclass', 'Sex','Embarked']
     train_set = make_columns_astype(train_set, categories, 'category')
