@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import sys
 
 
 def make_columns_astype(df, features, as_type):
@@ -47,21 +48,7 @@ def misclassification_error(T, c, verbose=False):
     pass
 
 
-def make_split(T, A, criterion='entropy'):
-    # setup criterion
-    try:
-        if criterion == 'entropy':
-            criterion = entropy
-        elif criterion == 'gini':
-            criterion = gini
-        elif criterion == 'misclassification error':
-            criterion = misclassification_error
-        else:
-            raise KeyError(
-                'criterion invalid. Please choose from "entropy", "gini" or "misclassification error".')
-    except KeyError as err:
-        print('Error caught:', err)
-
+def get_split_canditates(T, A):
     # check type of Attribute A (category or numerical)
     if T[A].dtype.name == 'category':
         print('It\'s a Category')
@@ -69,7 +56,45 @@ def make_split(T, A, criterion='entropy'):
         print('It\'s a Numerical')
 
 
-# Define this function
+def make_split(T, A, criterion):
+    # check type of Attribute A (category or numerical)
+    if T[A].dtype.name == 'category':
+        print('It\'s a Category')
+    if T[A].dtype.name == 'int64' or T[A].dtype.name == 'float64':
+        print('It\'s a Numerical')
+
+
+def make_best_split(T, A, criterion='information_gain'):
+    # strategy:
+    #   1. calculate splitpoints (all categories for category or mean between 2 values for numerical)
+    #   2. for every splitpoint calculate splitsets where attr_value == splitpoint or attr < splitpoint
+    #   3. calculate criterion and keep track of best_criterion_value and best_splitset in regards of splitpoints
+    #   4. return the best_criterion_value and best_splitset
+
+    # setup criterion
+    try:
+        if criterion == 'information_gain':
+            criterion = information_gain
+        elif criterion == 'gini':
+            criterion = gini
+        elif criterion == 'misclassification error':
+            criterion = misclassification_error
+        else:
+            raise KeyError(
+                'criterion invalid. Please choose from "information_gain", "gini" or "misclassification error".')
+    except KeyError as err:
+        print('Error caught:', err)
+        sys.exit(1)
+    # 1.
+    split_candidate_values = get_split_canditates(T, A)
+
+    # 2.
+    # Todo: pick start values, different best-values for different criterions ?
+    best_splitset, best_criterion_value = None, 0
+    for split_value in split_candidate_values:
+        splitset, criterion_value = make_split(T, A, criterion=criterion)
+
+
 def information_gain(T, c, A, verbose=False):
     pass
 
@@ -90,7 +115,7 @@ if __name__ == '__main__':
     #train_set = train_set[features]
 
     train_set.info()
-    make_split(train_set, 'SibSp', criterion='entropy')
+    make_best_split(train_set, 'SibSp', criterion='information_gain')
 
     # build the decision tree
     # TODO
