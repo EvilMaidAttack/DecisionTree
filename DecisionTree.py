@@ -44,58 +44,84 @@ def gini(T, c, verbose=False):
     pass
 
 
-def misclassification_error(T, c, verbose=False):
+def misclassification(T, c, verbose=False):
     pass
 
 
-def get_split_canditates(T, A):
-    # check type of Attribute A (category or numerical)
+def make_split(T, A):
+    T_subs = {}
     if T[A].dtype.name == 'category':
-        print('It\'s a Category')
+        group = T.groupby(A)
+        for category_value in group.groups:
+            T_sub = T[T[A] == category_value]
+            T_subs[category_value] = T_sub
+
     if T[A].dtype.name == 'int64' or T[A].dtype.name == 'float64':
         print('It\'s a Numerical')
 
-
-def make_split(T, A, criterion):
-    # check type of Attribute A (category or numerical)
-    if T[A].dtype.name == 'category':
-        print('It\'s a Category')
-    if T[A].dtype.name == 'int64' or T[A].dtype.name == 'float64':
-        print('It\'s a Numerical')
+    return T_subs
 
 
-def make_best_split(T, A, criterion='information_gain'):
-    # strategy:
+def make_best_split(T, As, criterion='information_gain', verbose=False):
+    # strategy for all A in As:
     #   1. calculate splitpoints (all categories for category or mean between 2 values for numerical)
     #   2. for every splitpoint calculate splitsets where attr_value == splitpoint or attr < splitpoint
-    #   3. calculate criterion and keep track of best_criterion_value and best_splitset in regards of splitpoints
+    #   3. calculate criterion and keep track of best_criterion_value and best_splitset in regards of the As
     #   4. return the best_criterion_value and best_splitset
 
+    # check type of Attribute A (category or numerical)
     # setup criterion
     try:
-        if criterion == 'information_gain':
+        if criterion == 'entropy':
             criterion = information_gain
         elif criterion == 'gini':
-            criterion = gini
-        elif criterion == 'misclassification error':
+            criterion = gini_index
+        elif criterion == 'misclassification':
             criterion = misclassification_error
         else:
             raise KeyError(
-                'criterion invalid. Please choose from "information_gain", "gini" or "misclassification error".')
+                'criterion key word invalid. Please choose from "entropy", "gini" or "misclassification".')
     except KeyError as err:
         print('Error caught:', err)
         sys.exit(1)
-    # 1.
-    split_candidate_values = get_split_canditates(T, A)
 
-    # 2.
-    # Todo: pick start values, different best-values for different criterions ?
-    best_splitset, best_criterion_value = None, 0
-    for split_value in split_candidate_values:
-        splitset, criterion_value = make_split(T, A, criterion=criterion)
+    best_criterion_value, best_T_subs = None, None
+    for A in As:
+        T_subs = make_split(T, A)
+        criterion_value = criterion(T, A, T_subs, verbose=verbose)
+        # catch the start phase and initialize best values
+        if best_criterion_value == None:
+            best_criterion_value = criterion_value
+            best_T_subs = T_subs
+        # because information gain is better when it has a higher value (unlike the other 2 criterions)
+        elif criterion.__name__ == 'information_gain':
+            if criterion_value > best_criterion_value:
+                best_criterion_value = criterion_value
+                best_T_subs = T_subs
+        # case for gini index and misclassification error. Lower value is better
+        else:
+            if criterion_value < best_criterion_value:
+                best_criterion_value = criterion_value
+                best_T_subs = T_subs
+
+    return best_T_subs, best_criterion_value
 
 
-def information_gain(T, c, A, verbose=False):
+def information_gain(T, c, T_subs, verbose=False):
+    entropy_before_split = entropy(T, c, verbose=verbose)
+    entropies_after_split = [entropy(T_sub, c, verbose)
+                             for T_sub in T_subs.values()]
+    lengths_T_sub = [len(T_sub.index) for T_sub in T_subs.values()]
+    print('lengths: ', lengths_T_sub)
+    print('entropy_before: ', entropy_before_split)
+    print('entropy_after: ', entropies_after_split)
+
+
+def gini_index(T, c, T_subs, verbose=False):
+    pass
+
+
+def misclassification_error(T, c, T_subs, verbose=False):
     pass
 
 
@@ -104,18 +130,18 @@ if __name__ == '__main__':
     train_set = pd.read_csv('res/titanic/train.csv')
     test_set = pd.read_csv('res/titanic/test.csv')
 
-    categories = ['Survived', 'Pclass', 'Sex', 'Embarked']
+    categories = ['Survived', 'Pclass', 'Sex', 'Embarked', 'SibSp', 'Parch']
     train_set = make_columns_astype(train_set, categories, 'category')
 
     train_set['Age'].fillna(round(train_set['Age'].mean()), inplace=True)
     train_set['Embarked'].fillna(train_set['Embarked'].mode()[0], inplace=True)
 
-    # Is this required?
-    #features = ['Survived', 'Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
-    #train_set = train_set[features]
+    features = ['Survived', 'Pclass', 'Sex', 'Age',
+                'SibSp', 'Parch', 'Fare', 'Embarked']
 
     train_set.info()
-    make_best_split(train_set, 'SibSp', criterion='information_gain')
+    T_subs, criterion_value = make_best_split(
+        train_set, categories, criterion='entropy', verbose=True)
 
     # build the decision tree
     # TODO
