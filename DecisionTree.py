@@ -43,10 +43,14 @@ def misclassification(T, c, verbose=False):
 
 
 def get_numerical_splitpoints(T, A):
+    # Sort data ascending by value in attribute A. Calculate mean between 2 adjacend values
+    # Each mean should be considered as a possible split point. --> many duplicates possible so we drop them
+    # returns a dframe with one column 'Mean'
     T_sorted = T.sort_values(A).reset_index(drop=True)
     T_sorted['Mean'] = T_sorted.groupby(
         np.arange(len(T_sorted)) // 2)[A].transform('mean')
-    means = T_sorted['Mean'].to_frame().drop_duplicates(ignore_index=True)
+    means = T_sorted['Mean'].to_frame().drop_duplicates(ignore_index=True)[1:]
+    print(means)
     return means
 
 
@@ -63,30 +67,26 @@ def make_split(T, A, verbose=False):
     if T[A].dtype.name == 'int64' or T[A].dtype.name == 'float64':
         print('It\'s a Numerical')
         means = np.array(get_numerical_splitpoints(T, A))[:, 0]
-        T_subs_best = {}
+        best_mean = means[0]
+        T_subs_best = {'<':T[T[A] < means[0]], '>=':T[T[A] >= means[0]]}
         T_subs_candidate = {}
-
-        T_subs_best['<'] = T[T[A] < means[0]]
-        T_subs_best['>='] = T[T[A] >= means[0]]
-        print(f'Current info:-------------\n'
-              'Mean:   {means[0]}\n'
-              'Best subset:  {T_subs_best}')
         inf_gain_best = information_gain(
             T, 'Survived', T_subs_best, verbose=False)
 
-        for mean in means[1:]:
-            print(f'Current info:-------------\n'
-                  'Mean:   {mean}\n'
-                  'Best subset:  {T_subs_best}')
+        for i,mean in enumerate(means[1:]):
             T_subs_candidate['<'] = T[T[A] < mean]
             T_subs_candidate['>='] = T[T[A] >= mean]
             inf_gain_candidate = information_gain(
                 T, 'Survived', T_subs_candidate, verbose=False)
             if inf_gain_best < inf_gain_candidate:
                 print(
-                    f'friendship ended with {inf_gain_best}\n {inf_gain_candidate} is my new best friend now.')
+                    f'{i}\nold: {inf_gain_best:.4f}\nnew: {inf_gain_candidate:.4f}\n')
                 inf_gain_best = inf_gain_candidate
                 T_subs_best = T_subs_candidate
+                best_mean = mean
+        
+        if verbose:
+            print('Best splitpoint for "{}" found at {:.4f}'.format(A, best_mean))
 
         T_subs = T_subs_best
 
@@ -119,7 +119,7 @@ def make_best_split(T, As, criterion='information_gain', verbose=False):
         print('Error caught:', err)
         sys.exit(1)
 
-    best_criterion_value, best_T_subs = None, None
+    best_criterion_value, best_T_subs, best_A = None, None, None
     for A in As:
         if verbose:
             print(
@@ -130,21 +130,34 @@ def make_best_split(T, As, criterion='information_gain', verbose=False):
         if best_criterion_value == None:
             best_criterion_value = criterion_value
             best_T_subs = T_subs
+            best_A = A
         # because information gain is better when it has a higher value (unlike the other 2 criterions)
-        elif criterion.__name__ == 'information_gain':
+        if criterion.__name__ == 'information_gain':
             if criterion_value > best_criterion_value:
                 best_criterion_value = criterion_value
                 best_T_subs = T_subs
+                best_A = A
         # case for gini index and misclassification error. Lower value is better
         else:
             if criterion_value < best_criterion_value:
                 best_criterion_value = criterion_value
                 best_T_subs = T_subs
+                best_A = A
+    
+    if verbose:
+        print('\n=============================================================================\n'
+            'Found best split with Attribute {} and {} = {:.4}'
+            '\n=============================================================================\n'
+            .format(best_A, criterion.__name__, best_criterion_value))
 
     return best_T_subs, best_criterion_value
 
 
 def information_gain(T, c, T_subs, verbose=False):
+    # calculate the information gain. Best value = 1 and worst value = 0.
+    # T is the parent dframe 
+    # c is a string representing the class (here specifically "Survived"), 
+    # T_subs are the sub-dframes after split as a dictionary of dframes with attribute value as 'keys'
     if verbose:
         print('\nCalculating information gain!')
 
@@ -166,6 +179,8 @@ def information_gain(T, c, T_subs, verbose=False):
     if verbose:
         print('--- Information gain: ', result)
         print('Finished calculation of information gain!')
+    
+    return result
 
 
 def gini_index(T, c, T_subs, verbose=False):
