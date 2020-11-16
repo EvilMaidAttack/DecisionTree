@@ -2,6 +2,29 @@ import numpy as np
 import pandas as pd
 import sys
 from copy import deepcopy
+from DecisionTreeNode import DecisionTreeNode
+
+
+class DecisionTree():
+
+    def __init__(self, criterion_string, attributes, nodes=[]):
+        """Decision Tree classifier for the Titanic dataset to predict if person survives.
+
+        Args:
+            criterion_string (string): String to indicate which impurity measurements to use. Supports 'information gain', 'gini index' and 'misclassification error'
+            nodes (list, optional): List of DecisionTreeNode representing the Nodes in the DecisionTree. Defaults to [].
+        """
+        super().__init__()
+        self.nodes = nodes
+        self.criterion_string = criterion_string
+        self.attributes = attributes
+
+    def fit(self, X):
+        attributes = self.attributes
+        # TODO: finish this
+
+    def predict(self, X):
+        pass
 
 
 def make_columns_astype(df, features, as_type):
