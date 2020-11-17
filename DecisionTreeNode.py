@@ -3,12 +3,13 @@ from anytree import NodeMixin
 
 class DecisionTreeNode(NodeMixin):
 
-    def __init__(self, data, criterion=None, decision_rule=None, parent=None, children=None):
+    def __init__(self, data, criterion=None, criterion_value=None, decision_rule=None, parent=None, children=None):
         """A Node class for a DecisionTree using the anytree library.
 
         Args:
             data (pandas.DataFrame): A DataFrame containing the (train)-data to fit the DecisionTreeNode. The DataFrame must include the class attribute.
-            criterion_value ((string, float)): Represents a measure for the impurity of the data. Supported are information gain, gini index and misclassification error.
+            criterion (string): Represents a measure for the impurity of the data. Supported are information gain, gini index and misclassification error.
+            criterion_value (string): Represents the impurity of the given node measured by criterion.
             decision_rule ((string, string)): decision rule expression for the given attribute. first value of tuple is attribute second is decision rule expression (e.g. '==', '<' and '>=')
             parent (NodeMixin, optional): The parent node. Can be any arbitrary instance of NodeMixin. If None, node is root node
             children ([NodeMixin], optional): The chidlren nodes. Can be any arbitrary iterable of NodeMixin. if none, node is leaf

@@ -12,6 +12,7 @@ class DecisionTree():
 
         Args:
             criterion_string (string): String to indicate which impurity measurements to use. Supports 'information gain', 'gini index' and 'misclassification error'
+            attributes (list): List of strings where each element is a attribute to be considered as split-attributes.
             nodes (list, optional): List of DecisionTreeNode representing the Nodes in the DecisionTree. Defaults to [].
         """
         super().__init__()
@@ -19,9 +20,20 @@ class DecisionTree():
         self.criterion_string = criterion_string
         self.attributes = attributes
 
-    def fit(self, X):
-        attributes = self.attributes
-        # TODO: finish this
+    def fit(self, X, verbose=False):
+        """Fit a dataset X in the DecisionTree. Generates the tree using the given criterion and attributes.
+
+        Args:
+            X (dframe (n_samples, n_features)): DataFrame of shape (n_samples, n_features).
+            verbose (string): verbose the process.
+        """
+        X_list = [X]
+        while len(attributes) > 0:
+            for data in X_list:
+                X_subs, criterion_value, attribute = make_best_split(
+                    data, attributes, criterion=self.criterion_string, verbose=verbose)
+                node = DecisionTreeNode(
+                    data, criterion=self.criterion_string, criterion_value=criterion_value)
 
     def predict(self, X):
         pass
@@ -228,7 +240,7 @@ def make_best_split(T, As, criterion='information_gain', verbose=False):
               '\n=============================================================================\n'
               .format(best_A, criterion.__name__, best_criterion_value))
 
-    return best_T_subs, best_criterion_value
+    return best_T_subs, best_criterion_value, best_A
 
 
 if __name__ == '__main__':
