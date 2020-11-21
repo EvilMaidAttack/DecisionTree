@@ -28,7 +28,7 @@ class DecisionTree():
             verbose (string): verbose the process.
         """
         X_list = [X]
-        while len(attributes) > 0:
+        while len(self.attributes) > 0:
             for data in X_list:
                 X_subs, criterion_value, attribute = make_best_split(
                     data, attributes, criterion=self.criterion_string, verbose=verbose)

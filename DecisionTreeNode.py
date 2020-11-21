@@ -1,4 +1,4 @@
-from anytree import NodeMixin
+from anytree import NodeMixin, RenderTree
 
 
 class DecisionTreeNode(NodeMixin):
@@ -21,3 +21,12 @@ class DecisionTreeNode(NodeMixin):
         self.parent = parent
         if children:
             self.children = children
+
+
+tree = DecisionTreeNode('hello')
+left = DecisionTreeNode('left', parent=tree)
+right = DecisionTreeNode('right', parent=tree)
+
+for pre, _, node in RenderTree(tree):
+    treestr = u"%s%s" % (pre, node.data)
+    print(treestr.ljust(8), node.data)
