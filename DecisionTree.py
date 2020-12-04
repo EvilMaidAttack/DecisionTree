@@ -25,15 +25,28 @@ class DecisionTree():
 
         Args:
             X (dframe (n_samples, n_features)): DataFrame of shape (n_samples, n_features).
-            verbose (string): verbose the process.
+            verbose (bool): verbose the process.
         """
-        X_list = [X]
-        while len(self.attributes) > 0:
-            for data in X_list:
-                X_subs, criterion_value, attribute = make_best_split(
-                    data, attributes, criterion=self.criterion_string, verbose=verbose)
-                node = DecisionTreeNode(
-                    data, criterion=self.criterion_string, criterion_value=criterion_value)
+        root_node = DecisionTreeNode(X, criterion=self.criterion_string)
+        self.nodes.append(root_node)
+        nodes_to_visit = [root_node]
+        while len(self.attributes) > 0 or len(nodes_to_visit) > 0:
+            parent_node = nodes_to_visit.pop(0)
+            data = parent_node.data
+            X_subs, criterion_val, attribute, splitpoint = make_best_split(data,self.attributes,self.criterion_string,verbose)
+            parent_node.criterion_value = criterion_val
+            self.attributes.remove(attribute)
+
+            if splitpoint is None:  # Case: categorical attribute
+                for attribute_key, X_sub in X_subs.items():
+                    node = DecisionTreeNode(X_sub, self.criterion_string)
+
+
+
+
+
+
+
 
     def predict(self, X):
         pass
@@ -166,6 +179,9 @@ def make_split(T, A, verbose=False):
         for category_value in group.groups:
             T_sub = T[T[A] == category_value]
             T_subs[category_value] = T_sub
+        if verbose:
+            print(f'make_split finished for {A} with keys: {list(T_subs.keys())}')
+        return T_subs
 
     if T[A].dtype.name == 'int64' or T[A].dtype.name == 'float64':
         means = np.array(get_numerical_split_candidates(T, A))[:, 0]
@@ -177,13 +193,9 @@ def make_split(T, A, verbose=False):
             print('Best splitpoint for "{}" found at {:.4f}'.format(
                 A, best_splitpoint))
 
-        # Dont forget to deepcopy !!!
-        T_subs = deepcopy(T_subs_best)
-
-    if verbose:
-        print(f'make_split finished for {A} with keys: {list(T_subs.keys())}')
-
-    return T_subs
+        if verbose:
+            print(f'make_split finished for {A} with keys: {list(T_subs.keys())}')
+        return T_subs_best, best_splitpoint
 
 
 def make_best_split(T, As, criterion='information_gain', verbose=False):
@@ -209,12 +221,14 @@ def make_best_split(T, As, criterion='information_gain', verbose=False):
         print('Error caught:', err)
         sys.exit(1)
 
-    best_criterion_value, best_T_subs, best_A = None, None, None
+    best_criterion_value, best_T_subs, best_A, splitpoint = None, None, None, None
     for A in As:
         if verbose:
             print(
                 f'\n\n--------------------Analyse for Attribute: {A} ----------------------')
         T_subs = make_split(T, A, verbose)
+        if isinstance(T_subs, tuple):   # We have the case of a numerical attribute --> we return tuple with splitpoint
+            T_subs, splitpoint = T_subs[0], T_subs[1]
         criterion_value = criterion(T, 'Survived', T_subs, verbose=verbose)
         # catch the start phase and initialize best values
         if best_criterion_value == None:
@@ -240,7 +254,7 @@ def make_best_split(T, As, criterion='information_gain', verbose=False):
               '\n=============================================================================\n'
               .format(best_A, criterion.__name__, best_criterion_value))
 
-    return best_T_subs, best_criterion_value, best_A
+    return best_T_subs, best_criterion_value, best_A, splitpoint
 
 
 if __name__ == '__main__':
@@ -258,8 +272,7 @@ if __name__ == '__main__':
                 'SibSp', 'Parch', 'Fare', 'Embarked']
 
     train_set.info()
-    T_subs, criterion_value = make_best_split(
-        train_set, features, criterion='entropy', verbose=True)
+    T_subs, criterion_value, best_A = make_best_split(train_set, features, criterion='entropy', verbose=True)
 
     # build the decision tree
     # TODO
