@@ -5,7 +5,7 @@ from copy import deepcopy
 from DecisionTreeNode import DecisionTreeNode
 
 
-class DecisionTree():
+class DecisionTree:
 
     def __init__(self, criterion_string, attributes, nodes=[]):
         """Decision Tree classifier for the Titanic dataset to predict if person survives.
@@ -33,15 +33,24 @@ class DecisionTree():
         while len(self.attributes) > 0 or len(nodes_to_visit) > 0:
             parent_node = nodes_to_visit.pop(0)
             data = parent_node.data
-            X_subs, criterion_val, attribute, splitpoint = make_best_split(data,self.attributes,self.criterion_string,verbose)
+            X_subs, criterion_val, attribute, splitpoint = make_best_split(data,self.attributes,self.criterion_string, verbose)
             parent_node.criterion_value = criterion_val
+            parent_node.attribute = attribute
             self.attributes.remove(attribute)
 
             if splitpoint is None:  # Case: categorical attribute
                 for attribute_key, X_sub in X_subs.items():
-                    node = DecisionTreeNode(X_sub, self.criterion_string)
+                    decision = (attribute_key, '==')
+                    node = DecisionTreeNode(X_sub, self.criterion_string, decision_rule=decision, parent=parent_node)
+                    self.nodes.append(node)
+                    nodes_to_visit.append(node)
 
-
+            else:   # Case: numerical attribute
+                for attribute_key, X_sub in X_subs.items():
+                    decision = (str(splitpoint), attribute_key)
+                    node = DecisionTreeNode(X_sub, self.criterion_string, decision_rule=decision, parent=parent_node)
+                    self.nodes.append(node)
+                    nodes_to_visit.append(node)
 
 
 
@@ -141,7 +150,7 @@ def get_numerical_split_candidates(T, A):
 
 def find_best_numerical_splitpoint(T, A, means, verbose=False):
     # For a numerical attribute to find the best splitpoint we first calculate the means according to 'get_numerical_splitpoints'
-    # For each mean we split the data with '< mean' and '>= mean'
+    # For each mean we split the data with '< mean' and '>=mean'
     # We measure the impurity of the split with 'information_gain'
     # We take the splitset and splitpoint with the lowest impurity (highest information gain) as the best split
     best_mean = means[0]
@@ -151,7 +160,7 @@ def find_best_numerical_splitpoint(T, A, means, verbose=False):
         T, 'Survived', T_subs_best, verbose=False)
 
     for i, mean in enumerate(means[1:]):
-        T_subs_candidate['<'] = T[T[A] < mean]
+        T_subs_candidate['< '] = T[T[A] < mean]
         T_subs_candidate['>='] = T[T[A] >= mean]
         inf_gain_candidate = information_gain(
             T, 'Survived', T_subs_candidate, verbose=False)
@@ -231,7 +240,7 @@ def make_best_split(T, As, criterion='information_gain', verbose=False):
             T_subs, splitpoint = T_subs[0], T_subs[1]
         criterion_value = criterion(T, 'Survived', T_subs, verbose=verbose)
         # catch the start phase and initialize best values
-        if best_criterion_value == None:
+        if best_criterion_value is None:
             best_criterion_value = criterion_value
             best_T_subs = deepcopy(T_subs)
             best_A = A
@@ -271,8 +280,7 @@ if __name__ == '__main__':
     features = ['Pclass', 'Sex', 'Age',
                 'SibSp', 'Parch', 'Fare', 'Embarked']
 
-    train_set.info()
-    T_subs, criterion_value, best_A = make_best_split(train_set, features, criterion='entropy', verbose=True)
+
 
     # build the decision tree
     # TODO
